@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PS4 GoldHEN MS Boost</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0b0f17;
+      color: #f0f6fc;
+      font-family: sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .panel {
+      background: #141b29;
+      border: 2px solid #0070d1;
+      border-radius: 12px;
+      padding: 28px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h1 { color: #58a6ff; font-size: 20px; margin-bottom: 10px; }
+    p { color: #8b949e; font-size: 13px; margin-bottom: 20px; line-height: 1.4; }
+    button {
+      background: #0070d1;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      width: 100%;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled { background: #2d3748; cursor: not-allowed; }
+    #status {
+      margin-top: 16px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #3fb950;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>⚡ GoldHEN MS Boost Loader</h1>
+    <p>Enable <b>BinLoader Server</b> in PS4 GoldHEN Settings before tapping below.</p>
+    <button id="injectBtn" onclick="injectPayload()">Load payload.bin</button>
+    <div id="status">System Ready (No-Lag Mode)</div>
+  </div>
+
+  <script>
+    let busy = false;
+
+    async function trySend(port, buffer) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3500);
+      try {
+        const res = await fetch("http://127.0.0.1:" + port, {
+          method: "POST",
+          body: buffer,
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        return res.ok;
+      } catch (e) {
+        clearTimeout(timer);
+        return false;
+      }
+    }
+
+    async function injectPayload() {
+      if (busy) return;
+      busy = true;
+
+      const btn = document.getElementById("injectBtn");
+      const status = document.getElementById("status");
+      btn.disabled = true;
+      status.style.color = "#d29922";
+      status.textContent = "Reading payload.bin...";
+
+      try {
+        const res = await fetch("payload.bin", { cache: "no-store" });
+        if (!res.ok) throw new Error("Missing payload.bin");
+        const buffer = await res.arrayBuffer();
+
+        status.textContent = "Injecting via Port 9090...";
+        let ok = await trySend(9090, buffer);
+
+        if (!ok) {
+          status.textContent = "Trying fallback Port 9020...";
+          ok = await trySend(9020, buffer);
+        }
+
+        if (ok) {
+          status.style.color = "#3fb950";
+          status.textContent = "✅ MS Boost Payload Loaded!";
+        } else {
+          status.style.color = "#f85149";
+          status.textContent = "❌ Enable BinLoader Server in GoldHEN Settings.";
+        }
+      } catch (err) {
+        status.style.color = "#f85149";
+        status.textContent = "❌ Error: " + err.message;
+      } finally {
+        btn.disabled = false;
+        busy = false;
+      }
+    }
+  </script>
+</body>
+</html>
